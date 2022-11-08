@@ -1,0 +1,21 @@
+kind: pipeline
+name: default
+
+steps:
+- name: code-analysis
+  image: aosapps/drone-sonar-plugin
+  settings:
+    sonar_host:
+      from_secret: sonar_host
+    sonar_token:
+      from_secret: sonar_token
+- name: test
+  image: mjehanno/golang_gui_linux:latest
+  commands:
+  - go test ./...
+  - go test ./... -json > test-report.out
+  - go test ./... -coverprofile=cover.out
+- name: build
+  image: mjehanno/golang_gui_linux:latest
+  commands:
+    - go build .

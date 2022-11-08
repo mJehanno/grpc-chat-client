@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "service/chat";
+
+message Message {
+  string author = 1;
+  string content = 2;
+}
+
+message Empty {}
+
+service ChatService {
+  rpc sendMsg(Message) returns (Empty) {}
+  rpc receiveMsg(Empty) returns (stream Message) {}
+}

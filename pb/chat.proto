@@ -7,9 +7,6 @@ message Message {
   string content = 2;
 }
 
-message Empty {}
-
 service ChatService {
-  rpc sendMsg(Message) returns (Empty) {}
-  rpc receiveMsg(Empty) returns (stream Message) {}
+  rpc ExchangeMessage(stream Message) returns (stream Message) {}
 }

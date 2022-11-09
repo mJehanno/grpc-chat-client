@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"sync"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -19,6 +21,16 @@ import (
 func main() {
 	a := app.New()
 	w := a.NewWindow("gchat")
+	rand.Seed(time.Now().UnixNano())
+	length := 9
+
+	ran_str := make([]byte, length)
+
+	// Generating Random string
+	for i := 0; i < length; i++ {
+		ran_str[i] = byte(65 + rand.Intn(25))
+	}
+	username := string(ran_str)
 
 	data := binding.BindStringList(&[]string{})
 
@@ -31,7 +43,7 @@ func main() {
 
 	ctx := context.Background()
 
-	messageStream, err := client.ReceiveMsg(ctx, &chat.Empty{})
+	messageStream, err := client.ExchangeMessage(ctx)
 	if err != nil {
 		log.Fatal("failed to connect to grpc server")
 	}
@@ -43,16 +55,18 @@ func main() {
 				return
 			}
 			var mu sync.Mutex
-			mu.Lock()
-			err = data.Append(fmt.Sprintf("%s send : %s", message.Author, message.Content))
-			if err != nil {
-				log.Println("error while adding message to list : ", err.Error())
+			if message.Author != username {
+				mu.Lock()
+				err = data.Append(fmt.Sprintf("%s send : %s", message.Author, message.Content))
+				if err != nil {
+					log.Println("error while adding message to list : ", err.Error())
+				}
+				mu.Unlock()
 			}
-			mu.Unlock()
 		}
 	}()
 
-	c := container.NewGridWithRows(2, messageDisplayer(data), messageBox(ctx, client, data))
+	c := container.NewGridWithRows(2, messageDisplayer(data), messageBox(ctx, messageStream, data, username))
 
 	w.SetContent(c)
 
@@ -71,10 +85,10 @@ func messageDisplayer(data binding.ExternalStringList) *fyne.Container {
 	return c
 }
 
-func messageBox(ctx context.Context, client chat.ChatServiceClient, data binding.ExternalStringList) *fyne.Container {
+func messageBox(ctx context.Context, client chat.ChatService_ExchangeMessageClient, data binding.ExternalStringList, user string) *fyne.Container {
 	text := widget.NewMultiLineEntry()
 	c := container.NewVBox(text, widget.NewButton("Send", func() {
-		_, err := client.SendMsg(ctx, &chat.Message{Author: "toto", Content: text.Text})
+		err := client.Send(&chat.Message{Author: user, Content: text.Text})
 		if err != nil {
 			log.Println("error while sending message : ", err.Error())
 		}
